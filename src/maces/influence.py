@@ -25,25 +25,53 @@ class InfluenceEngine:
         relevant = [r for r in patterns if r["pattern_key"] in wanted]
         if not relevant:
             relevant = sorted(patterns, key=lambda r: float(r["weight"]), reverse=True)[:2]
-        attention = [
+
+        attention_candidates = [
             (str(r["label"]), float(r["weight"]))
             for r in sorted(relevant, key=lambda r: float(r["weight"]), reverse=True)
             if float(r["weight"]) >= self.policy.minimum_influence_weight
-        ][: self.policy.influence_max_items]
+        ]
 
         labels = {r["pattern_key"]: r["label"] for r in patterns}
         connected = [r for r in edges if r["key_a"] in wanted or r["key_b"] in wanted]
-        associations = [
-            (str(labels.get(r["key_a"], r["key_a"])), str(labels.get(r["key_b"], r["key_b"])), float(r["weight"]))
+        association_candidates = [
+            (
+                str(labels.get(r["key_a"], r["key_a"])),
+                str(labels.get(r["key_b"], r["key_b"])),
+                float(r["weight"]),
+            )
             for r in sorted(connected, key=lambda r: float(r["weight"]), reverse=True)
             if float(r["weight"]) >= self.policy.minimum_influence_weight
-        ][: max(0, self.policy.influence_max_items - len(attention))]
+        ]
+        verify_candidates = [str(r["topic"]) for r in gaps if r["status"] == "open"]
 
-        verify = [str(r["topic"]) for r in gaps if r["status"] == "open"][:2]
+        remaining = self.policy.influence_max_items
+        attention = attention_candidates[:remaining]
+        remaining -= len(attention)
+        associations = association_candidates[:remaining]
+        remaining -= len(associations)
+        verify = verify_candidates[:remaining]
+
         values = [w for _, w in attention] + [w for _, _, w in associations]
-        signal = InfluenceSignal(attention, associations, verify, sum(values) / len(values) if values else 0.0)
+        signal = InfluenceSignal(
+            attention,
+            associations,
+            verify,
+            sum(values) / len(values) if values else 0.0,
+        )
+
         # The renderer only sees weighted labels, edge labels, and gap topics. It never
         # queries staged_artifacts, so autonomous research text cannot enter prompts.
-        if len(signal.render()) > self.policy.influence_max_chars:
-            signal.associations = []
+        # Remove lowest-priority items until the final rendered block satisfies the
+        # hard character budget. If one pathological item is itself too long, the
+        # signal is suppressed rather than leaking an oversized context block.
+        while signal.render() and len(signal.render()) > self.policy.influence_max_chars:
+            if signal.verify:
+                signal.verify.pop()
+            elif signal.associations:
+                signal.associations.pop()
+            elif signal.attention:
+                signal.attention.pop()
+            else:
+                break
         return signal
