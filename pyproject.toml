@@ -4,17 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-maces"
-version = "0.1.0"
-description = "Memory-Agnostic Cognitive Evolution Substrate"
+version = "1.0.0"
+description = "Subconscious layer plugin for Hermes Agent"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.5"]
-
-[project.scripts]
-maces = "maces.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
