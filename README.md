@@ -32,6 +32,48 @@ Any canonical knowledge system
 - Runtime influence is disabled by default and activated by policy level.
 - Every state transition is auditable and replayable.
 
+## Quick start
+
+```bash
+python -m pip install -e '.[dev]'
+pytest -q
+```
+
+Create a runtime event:
+
+```json
+{
+  "event_type": "task.completed",
+  "task_id": "task-001",
+  "subject": "commercial-display-design",
+  "confidence": 0.9,
+  "patterns": ["modular", "constructible", "prefabricated"],
+  "knowledge_gaps": [
+    {
+      "topic": "large acrylic suspension joints",
+      "reason": "Repeatedly requested but not yet supported by verified construction evidence",
+      "priority": 0.86,
+      "required_sources": ["manufacturer", "engineering", "code"]
+    }
+  ]
+}
+```
+
+Observe and inspect:
+
+```bash
+maces --db var/maces.db observe event.json
+maces --db var/maces.db inspect patterns
+maces --db var/maces.db inspect gaps
+maces --db var/maces.db inspect learning_proposals
+```
+
+The default activation level is `shadow`. Research and promotion proposal creation remain disabled until explicitly enabled by deterministic policy.
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+
 ## Status
 
-Clean-room implementation in progress. The repository is intentionally separate from earlier Hermes memory-system specifications to avoid authority and migration ambiguity.
+Clean-room implementation. This repository is intentionally separate from earlier Hermes memory-system specifications to avoid authority and migration ambiguity.
