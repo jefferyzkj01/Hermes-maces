@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -122,6 +123,50 @@ def test_same_gap_key_has_one_identity_across_reasons() -> None:
         gap_key="stable-gap-key",
     )
     assert observed.digest == inferred.digest
+
+
+def test_legacy_database_migrates_duplicate_active_proposals(tmp_path: Path) -> None:
+    path = tmp_path / "legacy.db"
+    with sqlite3.connect(path) as db:
+        db.executescript(
+            """
+            CREATE TABLE learning_proposals(
+              proposal_id TEXT PRIMARY KEY, digest TEXT UNIQUE NOT NULL, topic TEXT NOT NULL,
+              reason TEXT NOT NULL, priority REAL NOT NULL, required_sources_json TEXT NOT NULL,
+              gap_key TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL);
+            CREATE TABLE staged_artifacts(
+              artifact_id TEXT PRIMARY KEY, proposal_id TEXT NOT NULL, title TEXT NOT NULL,
+              content TEXT NOT NULL, sources_json TEXT NOT NULL, confidence REAL NOT NULL,
+              created_at TEXT NOT NULL);
+            """
+        )
+        db.execute(
+            "INSERT INTO learning_proposals VALUES(?,?,?,?,?,?,?,?,?)",
+            ("old-proposed", "legacy-digest-a", "Lighting", "reason a", 0.9, "[]", "gap-1", "proposed", "2026-01-01"),
+        )
+        db.execute(
+            "INSERT INTO learning_proposals VALUES(?,?,?,?,?,?,?,?,?)",
+            ("old-staged", "legacy-digest-b", "Lighting", "reason b", 0.5, "[]", "gap-1", "staged", "2026-01-02"),
+        )
+        db.execute(
+            "INSERT INTO staged_artifacts VALUES(?,?,?,?,?,?,?)",
+            ("artifact-1", "old-proposed", "Legacy", "content", "[]", 0.8, "2026-01-03"),
+        )
+
+    store = CognitiveStore(path)
+    proposals = store.list_table("learning_proposals")
+    assert len(proposals) == 1
+    assert proposals[0]["proposal_id"] == "old-staged"
+    assert store.list_table("staged_artifacts")[0]["proposal_id"] == "old-staged"
+
+    duplicate = LearningProposal(
+        topic="Lighting",
+        reason="new reason",
+        priority=1.0,
+        required_sources=["primary"],
+        gap_key="gap-1",
+    )
+    assert store.create_learning_proposal(duplicate) is False
 
 
 def test_hub_normalization_caps_outbound_weight(tmp_path: Path) -> None:
