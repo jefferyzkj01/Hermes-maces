@@ -64,6 +64,14 @@ class LearningIntent:
     created_at: str = field(default_factory=utc_now)
 
     @property
+    def proposal_id(self) -> str:
+        return self.intent_id
+
+    @property
+    def required_sources(self) -> list[str]:
+        return self.required_evidence
+
+    @property
     def digest(self) -> str:
         body = dumps(asdict(self), sort_keys=True, separators=(",", ":"))
         return sha256(body.encode()).hexdigest()
