@@ -1,0 +1,4 @@
+manifest_version: 1
+name: hermes-maces
+version: "1.0.0"
+description: Subconscious layer for Hermes: passive trace absorption, weighted associations, bounded influence, and governed surfacing.
