@@ -16,14 +16,22 @@ REQUIRED = (
     "docs/releases/v1.2.0.md",
 )
 
-FORBIDDEN_TRACKED_PARTS = (
-    "__pycache__",
-    ".pytest_cache",
-    ".ruff_cache",
+FORBIDDEN_FILE_NAMES = {
+    ".coverage",
+    ".DS_Store",
     "subconscious.db",
     "subconscious.db-wal",
     "subconscious.db-shm",
-)
+}
+FORBIDDEN_DIR_NAMES = {
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    "build",
+    "data",
+    "dist",
+    "htmlcov",
+}
 
 SCAN_EXCLUSIONS = {
     ".github/workflows/test.yml",
@@ -31,7 +39,7 @@ SCAN_EXCLUSIONS = {
     "scripts/check_public_boundary.py",
 }
 
-PRIVATE_PATH = re.compile(r"/Users/[^/\s]+/|[A-Za-z]:\\\\Users\\\\")
+PRIVATE_PATH = re.compile(r"/Users/[^/\s]+/|[A-Za-z]:\\Users\\")
 PRIVATE_KEY = re.compile(r"BEGIN\s+[^\n]*PRIVATE KEY")
 
 
@@ -44,6 +52,16 @@ def tracked_files() -> list[str]:
         text=True,
     )
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def is_runtime_artifact(relative: str) -> bool:
+    path = Path(relative)
+    parts = set(path.parts)
+    return (
+        path.name in FORBIDDEN_FILE_NAMES
+        or path.suffix in {".pyc", ".pyo"}
+        or any(part in FORBIDDEN_DIR_NAMES or part.endswith(".egg-info") for part in parts)
+    )
 
 
 def main() -> None:
@@ -60,9 +78,7 @@ def main() -> None:
 
     for relative in tracked_files():
         normalized = relative.replace("\\", "/")
-        if normalized.endswith((".pyc", ".pyo")) or any(
-            part in normalized for part in FORBIDDEN_TRACKED_PARTS
-        ):
+        if is_runtime_artifact(normalized):
             errors.append(f"tracked local/runtime artifact: {relative}")
 
         path = ROOT / relative
