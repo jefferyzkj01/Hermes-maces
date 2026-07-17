@@ -10,7 +10,7 @@ from typing import Any
 from .engine import MacesEngine
 from .models import CognitiveEvent
 from .policy import MacesPolicy
-from .store import CognitiveStore
+from .secure_store import CognitiveStore
 from .validation import is_valid_pattern_label, reject_sensitive_candidate, sanitize_profile_id, scrub_text
 
 log = logging.getLogger("hermes-maces")
