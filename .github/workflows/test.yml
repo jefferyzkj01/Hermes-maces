@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  unit-security:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,11 +20,29 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e '.[dev]'
       - run: ruff check src tests __init__.py
-      - run: pytest -q
-      - name: Plugin layout smoke test
+      - run: python -m compileall -q src __init__.py
+      - run: pytest -q -m "not e2e"
+      - name: Plugin and documentation contract
         run: |
           test -f plugin.yaml
           test -f __init__.py
+          test -f config.example.yaml
+          test ! -f config.yaml
           grep -q '^manifest_version: 1$' plugin.yaml
           grep -q '^name: hermes-maces$' plugin.yaml
-          grep -q 'from maces.plugin import register' __init__.py
+          grep -q '^kind: standalone$' plugin.yaml
+          grep -q '^provides_tools: \[\]$' plugin.yaml
+          ! grep -R -E 'maces_feedback|<installed-plugin>/data|rebuildable|replayable' \
+            README.md SUBCONSCIOUS.md README-HARDENING.md after-install.md docs
+
+  hermes-plugin-manager-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev]'
+      - run: python -m pip install 'hermes-agent==0.18.2'
+      - run: pytest -q -m e2e
