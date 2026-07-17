@@ -1,5 +1,7 @@
-# Profile isolation contract
+# Profile Isolation Contract
 
-A MACES runtime is created per plugin registration and permanently bound to `ctx.profile_name`. Runtime hooks close over that profile-bound instance. Profile identifiers supplied through hook kwargs, tool args, command params, or model output are ignored and cannot redirect storage.
+A runtime is bound at `register(ctx)` from normalized and validated `ctx.profile_name`. The active Hermes home is resolved by `hermes_constants.get_hermes_home()` and the database is `<HERMES_HOME>/data/maces/subconscious.db`.
 
-Registration fails if `ctx.profile_name` is absent or invalid. There is no shared fallback database.
+Profile-like values supplied in hook kwargs, tool arguments, command text, model output, or plugin-specific environment variables are ignored. Runtime caching is protected by a lock and keyed by both profile name and resolved home.
+
+Legacy checkout databases are moved out of the repository on first registration. Two profile homes therefore use disjoint SQLite files even when session and turn identifiers are identical.
