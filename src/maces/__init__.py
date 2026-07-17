@@ -9,7 +9,7 @@ from .models import (
     StagedArtifact,
 )
 from .policy import MacesPolicy
-from .store import CognitiveStore
+from .secure_store import CognitiveStore
 
 __all__ = [
     "CognitiveEvent",
