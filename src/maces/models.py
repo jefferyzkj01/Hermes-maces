@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from hashlib import sha256
@@ -42,9 +42,11 @@ class CognitiveEvent:
     event_id: str = field(default_factory=lambda: str(uuid4()))
 
     def validate(self) -> None:
-        if not self.kind.strip() or not self.source.strip():
+        if not isinstance(self.payload, dict):
+            raise ValueError("payload must be a mapping")
+        if not str(self.kind).strip() or not str(self.source).strip():
             raise ValueError("kind and source are required")
-        if not 0 <= self.confidence <= 1:
+        if not 0 <= float(self.confidence) <= 1:
             raise ValueError("confidence must be between 0 and 1")
 
 
@@ -62,7 +64,9 @@ class InfluenceSignal:
         items.extend(f"verify {topic}" for topic in self.verify)
         if not items:
             return ""
-        return "[intuition — advisory, unverified]\n" + "\n".join(f"- {item}" for item in items)
+        return "[intuition — advisory, unverified]\n" + "\n".join(
+            f"- {item}" for item in items
+        )
 
 
 @dataclass(slots=True)
@@ -78,9 +82,6 @@ class LearningProposal:
 
     @property
     def digest(self) -> str:
-        # A proposal represents one unresolved epistemic gap. Explanatory text,
-        # priority, evidence preferences, status, timestamps, and IDs may change
-        # without creating a new active proposal for the same gap.
         stable = {"gap_key": self.gap_key}
         return sha256(dumps(stable, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
@@ -106,4 +107,9 @@ class PromotionProposal:
 
     @property
     def digest(self) -> str:
-        return sha256(dumps(asdict(self), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        stable = {
+            "artifact_id": self.artifact_id,
+            "target_path": self.target_path,
+            "operation": self.operation,
+        }
+        return sha256(dumps(stable, sort_keys=True, separators=(",", ":")).encode()).hexdigest()

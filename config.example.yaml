@@ -1,0 +1,45 @@
+# Copy these keys into the active profile's HERMES_HOME/config.yaml.
+plugins:
+  enabled:
+    - hermes-maces
+  entries:
+    hermes-maces:
+      shadow_mode: true
+      influence:
+        max_items: 4
+        max_chars: 700
+        minimum_weight: 0.10
+      # Before shadow evaluation, populate 2-3 known successful retrieval tools.
+      # Include only safe query/topic string fields.
+      learnable_tool_fields:
+        web_search:
+          - query
+      limits:
+        max_patterns: 5000
+        max_edges: 20000
+        max_open_gaps: 500
+        max_candidates: 5000
+      maintenance:
+        decay_interval_hours: 24
+        prune_batch_size: 500
+      traditional_chinese:
+        candidate_min_sessions: 3
+        stopwords:
+          - 我
+          - 你
+          - 他
+          - 她
+          - 它
+          - 請
+          - 想要
+          - 喜歡
+          - 偏好
+          - 使用
+          - 關於
+          - 我們
+          - 你們
+          - 他們
+          - 這個
+          - 那個
+          - 可以
+          - 需要

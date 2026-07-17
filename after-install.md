@@ -1,19 +1,10 @@
-# Hermes MACES installed
+# After installation
 
-The subconscious layer is installed and enabled.
+1. Confirm `<profile-HERMES_HOME>/data/maces/subconscious.db` is the only MACES database.
+2. Keep `shadow_mode: true` for at least seven days.
+3. Use `/maces-status` to inspect aggregate health without exposing raw data.
+4. Scan database, WAL, and SHM for planted test secrets.
+5. Verify Hindsight, Obsidian, session SQLite, profile memory, and normal Hermes responses are unchanged.
+6. Enable bounded influence only after manual review.
 
-Restart Hermes so the plugin can register its lifecycle hooks. MACES will then begin passively absorbing operator-driven traces and may inject a small advisory block before later turns.
-
-Local state is stored inside the plugin directory at `data/subconscious.db`.
-
-To disable it without affecting Hermes memory or Obsidian:
-
-```bash
-hermes plugins disable hermes-maces
-```
-
-To remove it completely:
-
-```bash
-hermes plugins remove Hermes-maces
-```
+Rollback immediately with `hermes plugins disable hermes-maces` and a gateway restart if any invariant fails.

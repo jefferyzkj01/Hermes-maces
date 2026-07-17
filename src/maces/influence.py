@@ -4,7 +4,7 @@ from hashlib import sha256
 
 from .models import InfluenceSignal
 from .policy import MacesPolicy
-from .store import CognitiveStore
+from .secure_store import CognitiveStore
 from .validation import is_valid_pattern_label
 
 
@@ -18,39 +18,47 @@ class InfluenceEngine:
         self.policy = policy or MacesPolicy()
 
     def signal(self, concepts: list[str]) -> InfluenceSignal:
-        wanted = {_key(c): c.strip().lower() for c in concepts if c.strip()}
+        wanted = {_key(c): c.strip().lower() for c in concepts if str(c).strip()}
+        if not wanted or self.policy.influence_max_items <= 0:
+            return InfluenceSignal()
+
         query_limit = max(self.policy.influence_max_items * 4, 8)
         patterns = self.store.get_relevant_patterns(list(wanted), query_limit)
-        safe_patterns = [r for r in patterns if is_valid_pattern_label(str(r["label"]))]
-        relevant = [r for r in safe_patterns if r["pattern_key"] in wanted]
-        if not relevant:
-            relevant = safe_patterns[:2]
-
+        safe_patterns = [
+            row
+            for row in patterns
+            if is_valid_pattern_label(str(row["label"]))
+            and float(row["weight"]) >= self.policy.minimum_influence_weight
+        ]
         attention_candidates = [
-            (str(r["label"]), float(r["weight"]))
-            for r in relevant
-            if float(r["weight"]) >= self.policy.minimum_influence_weight
+            (str(row["label"]), float(row["weight"])) for row in safe_patterns
         ]
 
         edges = self.store.get_connected_edges(list(wanted), query_limit)
-        endpoint_keys = {str(r["key_a"]) for r in edges} | {str(r["key_b"]) for r in edges}
-        endpoint_patterns = self.store.get_relevant_patterns(list(endpoint_keys), query_limit * 2)
-        safe_endpoints = [r for r in endpoint_patterns if is_valid_pattern_label(str(r["label"]))]
-        weighted_keys = {
-            str(r["pattern_key"])
-            for r in safe_endpoints
-            if float(r["weight"]) >= self.policy.minimum_influence_weight
-        }
-        labels = {str(r["pattern_key"]): str(r["label"]) for r in safe_endpoints}
-        association_candidates = [
-            (labels[str(r["key_a"])], labels[str(r["key_b"])], float(r["weight"]))
-            for r in edges
-            if str(r["key_a"]) in weighted_keys
-            and str(r["key_b"]) in weighted_keys
-            and float(r["weight"]) >= self.policy.minimum_influence_weight
+        endpoint_keys = {
+            str(row["key_a"]) for row in edges
+        } | {str(row["key_b"]) for row in edges}
+        endpoint_patterns = self.store.get_relevant_patterns(
+            list(endpoint_keys), query_limit * 2
+        )
+        safe_endpoints = [
+            row
+            for row in endpoint_patterns
+            if is_valid_pattern_label(str(row["label"]))
+            and float(row["weight"]) >= self.policy.minimum_influence_weight
         ]
-        verify_candidates = [
-            str(r["topic"]) for r in self.store.get_open_gaps(query_limit)
+        labels = {str(row["pattern_key"]): str(row["label"]) for row in safe_endpoints}
+        weighted = set(labels)
+        association_candidates = [
+            (
+                labels[str(row["key_a"])],
+                labels[str(row["key_b"])],
+                float(row["weight"]),
+            )
+            for row in edges
+            if str(row["key_a"]) in weighted
+            and str(row["key_b"]) in weighted
+            and float(row["weight"]) >= self.policy.minimum_influence_weight
         ]
 
         remaining = self.policy.influence_max_items
@@ -58,13 +66,24 @@ class InfluenceEngine:
         remaining -= len(attention)
         associations = association_candidates[:remaining]
         remaining -= len(associations)
-        verify = verify_candidates[:remaining]
-        values = [w for _, w in attention] + [w for _, _, w in associations]
+
+        # An unresolved gap alone is not a high-weight signal. Only append verify
+        # reminders after a weighted node or association already justified influence.
+        verify: list[str] = []
+        if remaining > 0 and (attention or associations):
+            verify = [
+                str(row["topic"])
+                for row in self.store.get_open_gaps(remaining)
+            ][:remaining]
+
+        values = [weight for _, weight in attention] + [
+            weight for _, _, weight in associations
+        ]
         signal = InfluenceSignal(
-            attention,
-            associations,
-            verify,
-            sum(values) / len(values) if values else 0.0,
+            attention=attention,
+            associations=associations,
+            verify=verify,
+            confidence=sum(values) / len(values) if values else 0.0,
         )
         while signal.render() and len(signal.render()) > self.policy.influence_max_chars:
             if signal.verify:
@@ -75,4 +94,6 @@ class InfluenceEngine:
                 signal.attention.pop()
             else:
                 break
+        if len(signal.render()) > self.policy.influence_max_chars:
+            return InfluenceSignal()
         return signal

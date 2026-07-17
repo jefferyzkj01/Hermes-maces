@@ -1,9 +1,8 @@
 """Hermes MACES plugin entrypoint."""
-from pathlib import Path
-import sys
 
-_SRC = Path(__file__).parent / "src"
-if str(_SRC) not in sys.path:
-    sys.path.insert(0, str(_SRC))
+try:
+    from .src.maces.plugin import register
+except ImportError:  # direct import during local validation
+    from src.maces.plugin import register
 
-from maces.plugin import register  # noqa: E402,F401
+__all__ = ["register"]

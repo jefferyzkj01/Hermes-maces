@@ -1,75 +1,42 @@
-# SUBCONSCIOUS.md — The Subconscious Layer
+# MACES Subconscious Advisory Specification
 
-Status: normative v1 specification
+## Position in Hermes
 
-MACES is the subconscious layer embedded beneath Hermes's existing memory architecture. Existing episodic memory, canonical knowledge, and session history remain the conscious architecture.
+MACES is a subordinate advisory subsystem. Hindsight owns conversation and experience memory. Obsidian/LLM Wiki remains the formal knowledge Canon. Session history and profile memory remain host-owned. MACES neither replaces nor controls those systems.
 
-## Definition
+## Inputs
 
-The layer passively absorbs operator-driven usage traces, consolidates them into weighted concept nodes, associations, and epistemic gaps, and communicates with Hermes through exactly two channels:
-
-1. **Influence** — advisory bias injected through `pre_llm_call`; never facts and never staged content.
-2. **Surfacing** — digest-bound promotion proposals through an external approval gate.
-
-It never speaks with authority, never originates tool calls, and never writes canon directly.
-
-## Event sources
-
-- `retrieval.used`
-- `answer.confirmed`
-- `answer.corrected`
-- `task.completed`
-- `decision.confirmed`
-- `gap.observed`
-
-All ingestion is idempotent.
+MACES receives passive lifecycle traces from native Hermes hooks and explicit operator feedback from `/maces-feedback`. It never accepts profile selection from hook kwargs, model output, tool arguments, commands, or environment-provided profile identifiers. Profile binding occurs once from trusted `ctx.profile_name`; the active home is resolved through the Hermes home API.
 
 ## State
 
-- `patterns` — weighted concept nodes
-- `edges` — co-occurrence associations
-- `gaps` — epistemic gap map
-- `learning_proposals`
-- `staged_artifacts`
-- `promotion_proposals`
-- `journal`
+Per-profile state consists of events, weighted patterns, associations, Traditional Chinese candidates, gaps, learning proposals, staged artifacts, promotion proposals, metadata, and selected audit records. This state is disposable and is not a factual authority.
 
-State is disposable and must never be treated as a source of truth.
+The database path is `<profile-HERMES_HOME>/data/maces/subconscious.db`.
 
-## Dynamics
+## Signal semantics
 
-- Reinforcement: `w ← w + α(1 − w)`, `α = 0.10`
-- Correction penalty: `w ← w(1 − β)`, `β = 0.35`
-- Decay: `w ← w exp(−days / τ)`, `τ = 45 days`
-- Prune below `0.02`
-- Co-occurring concepts reinforce edges.
-- Outbound edge weight is normalized above `3.0`.
-- Staging-originated events feed no weights.
+- `task.completed`: occurrence/co-occurrence only; it does not raise node or edge weight.
+- validated `retrieval.used`: low positive reinforcement.
+- explicit `answer.confirmed`: positive reinforcement.
+- explicit `answer.corrected`: asymmetric penalty.
+- staged-origin material and non-operator events cannot reinforce the substrate.
+- passive Traditional Chinese candidates are excluded from influence until recurrence across the configured number of distinct sessions promotes them to zero-weight patterns.
 
 ## Influence
 
-`influence(concepts)` returns at most eight statistics-only items under:
+Influence is a compact `[intuition — advisory, unverified]` block containing only validated pattern labels, association labels, and open gap topics that clear the minimum weight. It is bounded by a shared item budget and a hard character budget. When no signal clears the threshold, the result is empty. Shadow mode always injects nothing.
 
-```text
-[intuition — advisory, unverified]
-```
-
-It may contain weighted concept labels, association labels, and gap topics. It must never query, quote, or summarize `staged_artifacts`.
+Influence never reads staged artifact content, raw events, complete tables, or Canon. Current user instructions and approved knowledge always outrank MACES.
 
 ## Surfacing
 
-Subconscious state becomes explicit only through a promotion proposal and external digest-bound authorization. Grant issuance and canonical writes live on the Hermes side.
+Staging is dark state. Promotion creates a digest-bound proposal with source and status metadata. Until a separately trusted Canon integration exists, proposals cannot modify Obsidian or any other canonical store and cannot be promoted automatically.
 
-## Learning
+## Journal
 
-Observed gaps may create bounded learning proposals. Research output goes only to staging. Nothing in staging is retrievable by the conscious system until approved and surfaced.
+The journal is an audit trail of selected transitions. It is not a complete event-sourcing system and does not promise full database reconstruction. Raw user messages, complete tool arguments, and sensitive values are prohibited.
 
-## Invariants
+## Failure behavior
 
-1. Subconscious state is never canonical.
-2. Influence is never fact.
-3. Research writes only to staging.
-4. Canon and rule writes require external authorization.
-5. No tool action originates from MACES.
-6. Every transition is journaled.
-7. Disabling MACES leaves Hermes fully functional.
+Runtime hook failures are contained inside MACES. They do not block a Hermes response, tool result, or session lifecycle transition. Disabling MACES removes advisory behavior while leaving host memory and Canon unchanged.

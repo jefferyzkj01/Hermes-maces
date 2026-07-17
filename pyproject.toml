@@ -1,18 +1,18 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=69,<81"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-maces"
-version = "1.1.0"
+version = "1.2.0"
 description = "Profile-bound subconscious advisory layer for Hermes Agent"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 license = {text = "MIT"}
-dependencies = ["pyyaml>=6.0"]
+dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.5"]
+dev = ["pytest>=8,<9", "ruff>=0.5,<1"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -20,6 +20,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = ["e2e: requires the real Hermes PluginManager"]
 
 [tool.ruff]
 line-length = 100

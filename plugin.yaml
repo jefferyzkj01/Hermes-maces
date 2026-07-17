@@ -1,4 +1,15 @@
 manifest_version: 1
 name: hermes-maces
-version: "1.1.0"
-description: Profile-bound subconscious advisory layer for Hermes with bounded retrieval and privacy-safe persistence.
+version: "1.2.0"
+kind: standalone
+author: Jeffery
+description: Profile-bound advisory memory signals with privacy-safe persistence.
+provides_hooks:
+  - pre_llm_call
+  - post_llm_call
+  - post_tool_call
+  - api_request_error
+  - on_session_end
+  - on_session_finalize
+  - on_session_reset
+provides_tools: []
