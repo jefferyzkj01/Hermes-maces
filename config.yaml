@@ -1,0 +1,14 @@
+# Non-secret MACES behavior configuration.
+# Tool learning is deny-by-default. Add only successful retrieval tools and safe string fields.
+learnable_tool_fields: {}
+
+influence:
+  max_items: 4
+  max_chars: 700
+  minimum_weight: 0.10
+
+feedback:
+  model_tool_enabled: false
+
+rollout:
+  shadow_mode: true
