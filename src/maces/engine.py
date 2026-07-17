@@ -7,6 +7,7 @@ from .influence import InfluenceEngine
 from .models import CognitiveEvent, EventKind, LearningProposal, PromotionProposal, StagedArtifact
 from .policy import MacesPolicy
 from .store import CognitiveStore
+from .validation import is_valid_pattern_label
 
 
 def _key(value: str) -> str:
@@ -30,7 +31,7 @@ class MacesEngine:
         keys = {label: _key(label) for label in labels}
         positive = event.kind in {EventKind.ANSWER_CONFIRMED, EventKind.DECISION_CONFIRMED}
         negative = event.kind == EventKind.ANSWER_CORRECTED
-        weak = event.kind in {EventKind.RETRIEVAL_USED, EventKind.TASK_COMPLETED}
+        retrieval = event.kind == EventKind.RETRIEVAL_USED
 
         for label, key in keys.items():
             row = self.store.pattern(key)
@@ -39,9 +40,11 @@ class MacesEngine:
                 weight = self.policy.reinforce(old)
             elif negative:
                 weight = self.policy.penalize(old)
-            elif weak:
-                weight = min(1.0, old + 0.02 * event.confidence)
+            elif retrieval:
+                weight = self.policy.reinforce_retrieval(old)
             else:
+                # task.completed records occurrence and co-occurrence only. Mention
+                # frequency is not evidence of preference.
                 weight = old
             self.store.put_pattern(key, label, weight, event.event_id, event.occurred_at)
 
@@ -83,7 +86,7 @@ class MacesEngine:
     def _labels(self, event: CognitiveEvent) -> list[str]:
         values = event.payload.get("concepts", event.payload.get("patterns", []))
         labels = [str(v).strip().lower() for v in values if str(v).strip()]
-        return list(dict.fromkeys(labels))[:16]
+        return list(dict.fromkeys(v for v in labels if is_valid_pattern_label(v)))[:16]
 
     def _gaps(self, event: CognitiveEvent) -> list[tuple[str, str, str, float]]:
         result: list[tuple[str, str, str, float]] = []
